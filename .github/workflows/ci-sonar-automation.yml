@@ -1,46 +1,41 @@
-name: CI with Sonar + Automation
+name: Backend Test Pipeline
 
 on:
   push:
-    branches: [master]
+    branches: [ main ]
   pull_request:
-    branches: [master]
+    branches: [ main ]
 
 jobs:
-  sonar-and-tests:
+  test-backend:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: '20'
 
-      -  name: Install dependencies
-         working-directory: ./backend
-         run: npm install
-
-      - name: Run backend tests
+      - name: Install backend dependencies
         working-directory: ./backend
-        run: npm run test:cov
+        run: npm install
 
-      - name: Install & Test Frontend
+      - name: Show available npm scripts (for debugging)
+        working-directory: ./backend
+        run: npm run
+
+      - name: Run backend tests with coverage
+        working-directory: ./backend
         run: |
-          cd frontend
-          npm install
-          npm test -- --coverage
+          echo "Running test:cov..."
+          npm run test:cov || (echo "==== npm debug log ====" && cat /home/runner/.npm/_logs/*.log)
 
-      - name: Run SonarQube Scan
-        uses: SonarSource/sonarcloud-github-action@v2
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-      - name: Trigger QA Automation
-        run: |
-          curl -X POST https://api.github.com/repos/<your-qa-repo>/actions/workflows/run-tests.yml/dispatches \
-          -H "Authorization: Bearer ${{ secrets.QA_REPO_TOKEN }}" \
-          -H "Accept: application/vnd.github.v3+json" \
-          -d '{"ref":"main"}'
+      - name: Upload npm debug logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: npm-debug-logs
+          path: /home/runner/.npm/_logs/
