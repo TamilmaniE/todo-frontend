@@ -1,0 +1,41 @@
+name: Backend Test Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm install
+
+      - name: Show available npm scripts (for debugging)
+        working-directory: ./backend
+        run: npm run
+
+      - name: Run backend tests with coverage
+        working-directory: ./backend
+        run: |
+          echo "Running test:cov..."
+          npm run test:cov || (echo "==== npm debug log ====" && cat /home/runner/.npm/_logs/*.log)
+
+      - name: Upload npm debug logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: npm-debug-logs
+          path: /home/runner/.npm/_logs/
